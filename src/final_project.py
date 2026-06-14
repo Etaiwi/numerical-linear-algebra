@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import time
 
 # Part I - Preliminaries
 
@@ -183,7 +184,6 @@ plot_singular_values(s=s, semilog=True, title="Singular Values of A_os",
 # ---------------------------------------------------------------------------------------------------------
 
 # Section (b)
-import time
 # ---------------------------------------------------------------------------------------------------------
 def svd_numerical_rank(s: np.ndarray, tau: float) -> int:
     """Compute numerical rank using the relative spectral norm.
@@ -400,3 +400,6 @@ plot_ranks_vs_W(results, tau_values=tau_values,
 # Plotting the SVD computation time vs W
 plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section c/svd_time_vs_W.png", show=False)
 """
+# ---------------------------------------------------------------------------------------------------------
+
+# Part II - Fast Rank Estimation
