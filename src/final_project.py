@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 
 # Part I - Preliminaries
-
+'''
 # Section (a)
 def build_grid_points(lam: float, alpha: float) -> np.ndarray:
     """Build particle coordinates in the square [-W/2, W/2]^2.
@@ -204,7 +204,7 @@ plot_matrix(A_os, title="Interaction Block $A^{os}$", savefig=True, filename="Pa
 U, s, Vh = np.linalg.svd(A_os, full_matrices=False)
 
 # Plot A_os SVD curve
-plot_singular_values(s=s, semilog=True, title="Singular Values of $A^{os}$",
+plot_singular_values(s=s, semilog=True, title="Singular values of $A^{os}$",
                      savefig=True, filename="Part I/Section a/singular_values_A_os.png", show=False)
 
 # Section (b)
@@ -278,7 +278,7 @@ def plot_singular_values_sequence(results, normalized: bool = False,
     ax.set_yscale("log")
     ax.set_xlabel("Singular value index")
     ax.set_ylabel("Relative singular value" if normalized else "Singular value")
-    ax.set_title("Relative singular value curves for different W" if normalized else "singular value curves for different W")
+    ax.set_title("Relative singular values curves for different W" if normalized else "Singular values curves for different W")
     ax.grid(True, which="major", alpha=0.3)
     ax.grid(False, which="minor")
     ax.legend()
@@ -421,5 +421,6 @@ plot_ranks_vs_W(results, tau_values=tau_values,
 
 # Plotting the SVD computation time vs W
 plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section c/svd_time_vs_W.png", show=False)
-
+'''
 # Part II - Fast Rank Estimation
+
