@@ -6,7 +6,6 @@ import time
 # Part I - Preliminaries
 
 # Section (a)
-# ---------------------------------------------------------------------------------------------------------
 def build_grid_points(lam: float, alpha: float) -> np.ndarray:
     """Build particle coordinates in the square [-W/2, W/2]^2.
     Returns:
@@ -37,12 +36,38 @@ def plot_grid(points: np.ndarray, title: str = "Particle Grid",
     if savefig:
         out_path = Path("images") / filename
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(out_path)
+        plt.savefig(out_path, dpi=300)
         print(f"Saved figure to {out_path}")
     if show:
         plt.show()
     else:
         plt.close()
+
+def plot_source_observer_grid(points, source_points, observer_points, title="Source and Observer Regions",
+                              savefig=False, filename="source_observer_grid.png", show=True):
+    fig, ax = plt.subplots(figsize=(7, 7))
+
+    ax.scatter(points[:, 0], points[:, 1], s=8, alpha=0.25, label="Full grid")
+    ax.scatter(source_points[:, 0], source_points[:, 1], s=25, label="Source points")
+    ax.scatter(observer_points[:, 0], observer_points[:, 1], s=25, label="Observer points")
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title(title)
+    ax.axis("equal")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    if savefig:
+        out_path = Path("images") / filename
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        print(f"Saved figure to {out_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 def select_square_points(points: np.ndarray, center: np.ndarray, w: float) -> np.ndarray:
     """Select particles inside a square of side length w centered at center."""
@@ -87,7 +112,7 @@ def constructing_A_os(source_points: np.ndarray, observer_points: np.ndarray, ke
     A_os = np.array([[kernel(r_o, r_s) for r_s in source_points] for r_o in observer_points])
     return A_os
 
-def plot_matrix(A: np.ndarray, title: str = "A_os",
+def plot_matrix(A: np.ndarray, title: str = "$A^os$",
                 savefig: bool = False, filename: str = "Matrix.png", show: bool = True) -> None:
     """Plot a matrix with colorbar for interaction strength."""
     plt.figure(figsize=(6, 5))
@@ -100,7 +125,7 @@ def plot_matrix(A: np.ndarray, title: str = "A_os",
     if savefig:
         out_path = Path("images") / filename
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(out_path, bbox_inches="tight")
+        plt.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Saved figure to {out_path}")
 
     if show:
@@ -128,16 +153,14 @@ def plot_singular_values(s: np.ndarray, semilog: bool = True, title: str = "Sing
     if savefig:
         out_path = Path("images") / filename
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(out_path, bbox_inches="tight")
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Saved figure to {out_path}")
 
     if show:
         plt.show()
     else:
         plt.close(fig)
-# ---------------------------------------------------------------------------------------------------------
-# Section (a) main code
-"""
+
 lam = 1.0
 alpha = 4
 W = alpha * lam
@@ -165,6 +188,9 @@ plot_grid(points=source_points, title="Source Points",
 plot_grid(points=observer_points, title="Observer Points",
           savefig=True, filename="Part I/Section a/observer_points.png", show=False)
 
+plot_source_observer_grid(points=points, source_points=source_points, observer_points=observer_points, 
+                          title="Full Grid with Source and Observer Points", savefig=True, filename="Part I/Section a/source_observer_grid.png", show=False)
+
 # Creating A_os
 A_os = constructing_A_os(source_points=source_points, observer_points=observer_points, kernel=kernel_a)
 
@@ -172,19 +198,16 @@ A_os = constructing_A_os(source_points=source_points, observer_points=observer_p
 print("Shape of A_os:", A_os.shape)
 
 # Plot A_os
-plot_matrix(A_os, title="Interaction Block A_os", savefig=True, filename="Part I/Section a/A_os.png", show=False)
+plot_matrix(A_os, title="Interaction Block $A^{os}$", savefig=True, filename="Part I/Section a/A_os.png", show=False)
 
 # Computing the SVD of A_os
 U, s, Vh = np.linalg.svd(A_os, full_matrices=False)
 
 # Plot A_os SVD curve
-plot_singular_values(s=s, semilog=True, title="Singular Values of A_os",
+plot_singular_values(s=s, semilog=True, title="Singular Values of $A^{os}$",
                      savefig=True, filename="Part I/Section a/singular_values_A_os.png", show=False)
-"""
-# ---------------------------------------------------------------------------------------------------------
 
 # Section (b)
-# ---------------------------------------------------------------------------------------------------------
 def svd_numerical_rank(s: np.ndarray, tau: float) -> int:
     """Compute numerical rank using the relative spectral norm.
     Rank r is chosen using the 2-norm, which means:
@@ -234,7 +257,7 @@ def run_single_case(lam: float, alpha: float, kernel, tau_values):
         "svd_time": svd_time
     }
 
-def plot_singular_values_sequence(results, normalized: bool = True,
+def plot_singular_values_sequence(results, normalized: bool = False,
                                   savefig: bool = False, filename: str = "singular_values_sequence.png", show: bool = True) -> None:
     """Plot singular value curves."""
     fig, ax = plt.subplots(figsize=(6, 5))
@@ -255,7 +278,7 @@ def plot_singular_values_sequence(results, normalized: bool = True,
     ax.set_yscale("log")
     ax.set_xlabel("Singular value index")
     ax.set_ylabel("Relative singular value" if normalized else "Singular value")
-    ax.set_title("Singular value curves for different W")
+    ax.set_title("Relative singular value curves for different W" if normalized else "singular value curves for different W")
     ax.grid(True, which="major", alpha=0.3)
     ax.grid(False, which="minor")
     ax.legend()
@@ -263,7 +286,7 @@ def plot_singular_values_sequence(results, normalized: bool = True,
     if savefig:
         out_path = Path("images") / filename
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(out_path, bbox_inches="tight")
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Save figure to {out_path}")
 
     if show:
@@ -280,7 +303,7 @@ def plot_ranks_vs_W(results, tau_values,
 
     for tau in tau_values:
         ranks = np.array([result["ranks"][tau] for result in results])
-        ax.scatter(W_values, ranks, label=f"tau={tau:g}")
+        ax.scatter(W_values, ranks, label = f"$\\tau={tau:g}$")
 
     ax.set_xlabel("W")
     ax.set_ylabel("Numerical rank")
@@ -292,7 +315,7 @@ def plot_ranks_vs_W(results, tau_values,
     if savefig:
         out_path = Path("images") / filename
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(out_path, bbox_inches="tight")
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Saved figure to {out_path}")
 
     if show:
@@ -319,16 +342,14 @@ def plot_svd_time_vs_W(results, savefig: bool = False, filename: str = "svd_time
     if savefig:
         out_path = Path("images") / filename
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(out_path, bbox_inches="tight")
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Saved figure to {out_path}")
 
     if show:
         plt.show()
     else:
         plt.close()
-# ---------------------------------------------------------------------------------------------------------
-# Section (b) main code
-"""
+
 lam = 1.0
 tau_values = [1e-2, 1e-5, 1e-8]
 alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
@@ -346,8 +367,11 @@ for alpha in alpha_values:
     )
 
 # Plotting the singular values curves for every W
-plot_singular_values_sequence(results=results, normalized=True,
+plot_singular_values_sequence(results=results, normalized=False,
     savefig=True, filename="Part I/Section b/singular_values_sequence.png", show=False)
+
+plot_singular_values_sequence(results=results, normalized=True,
+    savefig=True, filename="Part I/Section b/relative_singular_values_sequence.png", show=False)
 
 # Plotting the ranks vs W for the different tau values
 plot_ranks_vs_W(results, tau_values=tau_values,
@@ -355,11 +379,8 @@ plot_ranks_vs_W(results, tau_values=tau_values,
 
 # Plotting the SVD computation time vs W
 plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section b/svd_time_vs_W.png", show=False)
-"""
-# ---------------------------------------------------------------------------------------------------------
 
 # Section (c)
-# ---------------------------------------------------------------------------------------------------------
 def kernel_c(r_m: np.ndarray, r_n: np.ndarray, lam: float) -> complex:
     """Oscillatory kernel from Part I(c)."""
     dist = np.linalg.norm(r_m - r_n)
@@ -369,9 +390,7 @@ def kernel_c(r_m: np.ndarray, r_n: np.ndarray, lam: float) -> complex:
 
     k = 2 * np.pi / lam
     return np.exp(-1j * k * dist) / np.sqrt(dist)
-# ---------------------------------------------------------------------------------------------------------
-# Section (c) main code
-"""
+
 lam = 1.0
 tau_values = [1e-2, 1e-5, 1e-8]
 alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
@@ -390,8 +409,11 @@ for alpha in alpha_values:
     )
 
 # Plotting the singular values curves for every W
-plot_singular_values_sequence(results=results, normalized=True,
+plot_singular_values_sequence(results=results, normalized=False,
     savefig=True, filename="Part I/Section c/singular_values_sequence.png", show=False)
+
+plot_singular_values_sequence(results=results, normalized=True,
+    savefig=True, filename="Part I/Section c/relative_singular_values_sequence.png", show=False)
 
 # Plotting the ranks vs W for the different tau values
 plot_ranks_vs_W(results, tau_values=tau_values,
@@ -399,7 +421,5 @@ plot_ranks_vs_W(results, tau_values=tau_values,
 
 # Plotting the SVD computation time vs W
 plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section c/svd_time_vs_W.png", show=False)
-"""
-# ---------------------------------------------------------------------------------------------------------
 
 # Part II - Fast Rank Estimation
