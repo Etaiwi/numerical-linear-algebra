@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 
 # Part I - Preliminaries
-'''
+
 # Section (a)
 def build_grid_points(lam: float, alpha: float) -> np.ndarray:
     """Build particle coordinates in the square [-W/2, W/2]^2.
@@ -421,6 +421,6 @@ plot_ranks_vs_W(results, tau_values=tau_values,
 
 # Plotting the SVD computation time vs W
 plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section c/svd_time_vs_W.png", show=False)
-'''
+
 # Part II - Fast Rank Estimation
 
