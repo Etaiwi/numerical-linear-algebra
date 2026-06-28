@@ -5,6 +5,8 @@ import time
 
 # Part I - Preliminaries
 
+run_part_i = False
+
 # Section (a)
 def build_grid_points(lam: float, alpha: float) -> np.ndarray:
     """Build particle coordinates in the square [-W/2, W/2]^2.
@@ -161,51 +163,52 @@ def plot_singular_values(s: np.ndarray, semilog: bool = True, title: str = "Sing
     else:
         plt.close(fig)
 
-lam = 1.0
-alpha = 4
-W = alpha * lam
-w = W / 8
+if run_part_i:
+    lam = 1.0
+    alpha = 4
+    W = alpha * lam
+    w = W / 8
 
-bottom_left, top_right, top_left, bottom_right = corner_centers(W=W, w=w)
+    bottom_left, top_right, top_left, bottom_right = corner_centers(W=W, w=w)
 
-r_cs = bottom_left
-r_co = top_right
+    r_cs = bottom_left
+    r_co = top_right
 
-# Build the full grid and select source/observer points
-points = build_grid_points(lam=lam, alpha=alpha)
-source_points = select_square_points(points=points, center=r_cs, w=w)
-observer_points = select_square_points(points=points, center=r_co, w=w)
+    # Build the full grid and select source/observer points
+    points = build_grid_points(lam=lam, alpha=alpha)
+    source_points = select_square_points(points=points, center=r_cs, w=w)
+    observer_points = select_square_points(points=points, center=r_co, w=w)
 
-# Print the shape of the points arrays
-print("Shape of points:", points.shape)
-print("Shape of source_points:", source_points.shape)
-print("Shape of observer_points:", observer_points.shape)
+    # Print the shape of the points arrays
+    print("Shape of points:", points.shape)
+    print("Shape of source_points:", source_points.shape)
+    print("Shape of observer_points:", observer_points.shape)
 
-# Plot the grid
-plot_grid(points=points, title="Full Grid", savefig=True, filename="Part I/Section a/full_grid.png", show=False)
-plot_grid(points=source_points, title="Source Points",
-          savefig=True, filename="Part I/Section a/source_points.png", show=False)
-plot_grid(points=observer_points, title="Observer Points",
-          savefig=True, filename="Part I/Section a/observer_points.png", show=False)
+    # Plot the grid
+    plot_grid(points=points, title="Full Grid", savefig=True, filename="Part I/Section a/full_grid.png", show=False)
+    plot_grid(points=source_points, title="Source Points",
+            savefig=True, filename="Part I/Section a/source_points.png", show=False)
+    plot_grid(points=observer_points, title="Observer Points",
+            savefig=True, filename="Part I/Section a/observer_points.png", show=False)
 
-plot_source_observer_grid(points=points, source_points=source_points, observer_points=observer_points, 
-                          title="Full Grid with Source and Observer Points", savefig=True, filename="Part I/Section a/source_observer_grid.png", show=False)
+    plot_source_observer_grid(points=points, source_points=source_points, observer_points=observer_points, 
+                            title="Full Grid with Source and Observer Points", savefig=True, filename="Part I/Section a/source_observer_grid.png", show=False)
 
-# Creating A_os
-A_os = constructing_A_os(source_points=source_points, observer_points=observer_points, kernel=kernel_a)
+    # Creating A_os
+    A_os = constructing_A_os(source_points=source_points, observer_points=observer_points, kernel=kernel_a)
 
-# Print shape of A_os
-print("Shape of A_os:", A_os.shape)
+    # Print shape of A_os
+    print("Shape of A_os:", A_os.shape)
 
-# Plot A_os
-plot_matrix(A_os, title="Interaction Block $A^{os}$", savefig=True, filename="Part I/Section a/A_os.png", show=False)
+    # Plot A_os
+    plot_matrix(A_os, title="Interaction Block $A^{os}$", savefig=True, filename="Part I/Section a/A_os.png", show=False)
 
-# Computing the SVD of A_os
-U, s, Vh = np.linalg.svd(A_os, full_matrices=False)
+    # Computing the SVD of A_os
+    _, s, _ = np.linalg.svd(A_os, full_matrices=False)
 
-# Plot A_os SVD curve
-plot_singular_values(s=s, semilog=True, title="Singular values of $A^{os}$",
-                     savefig=True, filename="Part I/Section a/singular_values_A_os.png", show=False)
+    # Plot A_os SVD curve
+    plot_singular_values(s=s, semilog=True, title="Singular values of $A^{os}$",
+                        savefig=True, filename="Part I/Section a/singular_values_A_os.png", show=False)
 
 # Section (b)
 def svd_numerical_rank(s: np.ndarray, tau: float) -> int:
@@ -350,35 +353,36 @@ def plot_svd_time_vs_W(results, savefig: bool = False, filename: str = "svd_time
     else:
         plt.close()
 
-lam = 1.0
-tau_values = [1e-2, 1e-5, 1e-8]
-alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
-results = []
+if run_part_i:
+    lam = 1.0
+    tau_values = [1e-2, 1e-5, 1e-8]
+    alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
+    results = []
 
-for alpha in alpha_values:
-    result = run_single_case(lam=lam, alpha=alpha, kernel=kernel_a, tau_values=tau_values)
-    results.append(result)
+    for alpha in alpha_values:
+        result = run_single_case(lam=lam, alpha=alpha, kernel=kernel_a, tau_values=tau_values)
+        results.append(result)
 
-    print(
-        f"alpha={alpha}, W={result['W']}, "
-        f"A_os shape={result['A_shape']}, "
-        f"time={result['svd_time']:.4f} sec, "
-        f"ranks={result['ranks']}"
-    )
+        print(
+            f"alpha={alpha}, W={result['W']}, "
+            f"A_os shape={result['A_shape']}, "
+            f"time={result['svd_time']:.4f} sec, "
+            f"ranks={result['ranks']}"
+        )
 
-# Plotting the singular values curves for every W
-plot_singular_values_sequence(results=results, normalized=False,
-    savefig=True, filename="Part I/Section b/singular_values_sequence.png", show=False)
+    # Plotting the singular values curves for every W
+    plot_singular_values_sequence(results=results, normalized=False,
+        savefig=True, filename="Part I/Section b/singular_values_sequence.png", show=False)
 
-plot_singular_values_sequence(results=results, normalized=True,
-    savefig=True, filename="Part I/Section b/relative_singular_values_sequence.png", show=False)
+    plot_singular_values_sequence(results=results, normalized=True,
+        savefig=True, filename="Part I/Section b/relative_singular_values_sequence.png", show=False)
 
-# Plotting the ranks vs W for the different tau values
-plot_ranks_vs_W(results, tau_values=tau_values,
-    savefig=True, filename="Part I/Section b/ranks_vs_W.png", show=False)
+    # Plotting the ranks vs W for the different tau values
+    plot_ranks_vs_W(results, tau_values=tau_values,
+        savefig=True, filename="Part I/Section b/ranks_vs_W.png", show=False)
 
-# Plotting the SVD computation time vs W
-plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section b/svd_time_vs_W.png", show=False)
+    # Plotting the SVD computation time vs W
+    plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section b/svd_time_vs_W.png", show=False)
 
 # Section (c)
 def kernel_c(r_m: np.ndarray, r_n: np.ndarray, lam: float) -> complex:
@@ -391,36 +395,347 @@ def kernel_c(r_m: np.ndarray, r_n: np.ndarray, lam: float) -> complex:
     k = 2 * np.pi / lam
     return np.exp(-1j * k * dist) / np.sqrt(dist)
 
-lam = 1.0
-tau_values = [1e-2, 1e-5, 1e-8]
-alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
-kernel_c_lam = lambda r_m, r_n: kernel_c(r_m, r_n, lam) # lambda function to insert lam into kernel_c
-results = []
+if run_part_i:
+    lam = 1.0
+    tau_values = [1e-2, 1e-5, 1e-8]
+    alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
+    kernel_c_lam = lambda r_m, r_n: kernel_c(r_m, r_n, lam) # lambda function to insert lam into kernel_c
+    results = []
 
-for alpha in alpha_values:
-    result = run_single_case(lam=lam, alpha=alpha, kernel=kernel_c_lam, tau_values=tau_values)
-    results.append(result)
+    for alpha in alpha_values:
+        result = run_single_case(lam=lam, alpha=alpha, kernel=kernel_c_lam, tau_values=tau_values)
+        results.append(result)
 
-    print(
-        f"alpha={alpha}, W={result['W']}, "
-        f"A_os shape={result['A_shape']}, "
-        f"time={result['svd_time']:.4f} sec, "
-        f"ranks={result['ranks']}"
-    )
+        print(
+            f"alpha={alpha}, W={result['W']}, "
+            f"A_os shape={result['A_shape']}, "
+            f"time={result['svd_time']:.4f} sec, "
+            f"ranks={result['ranks']}"
+        )
 
-# Plotting the singular values curves for every W
-plot_singular_values_sequence(results=results, normalized=False,
-    savefig=True, filename="Part I/Section c/singular_values_sequence.png", show=False)
+    # Plotting the singular values curves for every W
+    plot_singular_values_sequence(results=results, normalized=False,
+        savefig=True, filename="Part I/Section c/singular_values_sequence.png", show=False)
 
-plot_singular_values_sequence(results=results, normalized=True,
-    savefig=True, filename="Part I/Section c/relative_singular_values_sequence.png", show=False)
+    plot_singular_values_sequence(results=results, normalized=True,
+        savefig=True, filename="Part I/Section c/relative_singular_values_sequence.png", show=False)
 
-# Plotting the ranks vs W for the different tau values
-plot_ranks_vs_W(results, tau_values=tau_values,
-    savefig=True, filename="Part I/Section c/ranks_vs_W.png", show=False)
+    # Plotting the ranks vs W for the different tau values
+    plot_ranks_vs_W(results, tau_values=tau_values,
+        savefig=True, filename="Part I/Section c/ranks_vs_W.png", show=False)
 
-# Plotting the SVD computation time vs W
-plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section c/svd_time_vs_W.png", show=False)
+    # Plotting the SVD computation time vs W
+    plot_svd_time_vs_W(results, savefig=True, filename="Part I/Section c/svd_time_vs_W.png", show=False)
 
 # Part II - Fast Rank Estimation
 
+run_part_ii = True
+
+# Section (f)
+def fast_rank_estimation(A_os: np.ndarray, tau: float, tau_R: float) -> int:
+    """Estimate the numerical rank of A_os using the proposed randomized algorithm."""
+    l = 1
+    n = 10
+    N = A_os.shape[0]
+    prev_rank = None
+
+    while True:
+        n = min(n, N) # make sure n is not bigger than A_os
+
+        row_idx = np.random.choice(N, size=n, replace=False) # row index vector
+        col_idx = np.random.choice(N, size=n, replace=False) # col index vector
+
+        A_l_os = A_os[row_idx][:, col_idx] # submatrix A_l_os
+
+        _, s, _ = np.linalg.svd(A_l_os, full_matrices=False)
+        rank = svd_numerical_rank(s=s, tau=tau)
+
+        if l != 1 and prev_rank is not None:
+            eps_R = (rank - prev_rank) / rank
+            if eps_R < tau_R:
+                return rank
+
+        if n == N:
+            return rank
+
+        prev_rank = rank
+        n = 2 * n
+        l += 1
+
+def run_fast_rank_case(lam: float, alpha: float, kernel, tau_values, tau_R: float):
+    """Run one fast rank-estimation case and return data needed for plots."""
+    W = alpha * lam
+    w = W / 8
+
+    bottom_left, top_right, top_left, bottom_right = corner_centers(W=W, w=w)
+    r_cs = bottom_left
+    r_co = top_right
+
+    points = build_grid_points(lam=lam, alpha=alpha)
+    source_points = select_square_points(points=points, center=r_cs, w=w)
+    observer_points = select_square_points(points=points, center=r_co, w=w)
+
+    A_os = constructing_A_os(
+        source_points=source_points,
+        observer_points=observer_points,
+        kernel=kernel
+    )
+
+    start = time.perf_counter()
+    ranks = {tau: fast_rank_estimation(A_os=A_os, tau=tau, tau_R=tau_R) for tau in tau_values}
+    fast_time = time.perf_counter() - start
+
+    return {
+        "alpha": alpha,
+        "W": W,
+        "w": w,
+        "A_shape": A_os.shape,
+        "ranks": ranks,
+        "fast_time": fast_time
+    }
+
+def plot_rank_comparison_vs_W(svd_results, fast_results, tau_values,
+                              savefig: bool = False, filename: str = "rank_comparison_vs_W.png",
+                              show: bool = True) -> None:
+    """Plot full-SVD ranks and fast-estimated ranks versus W."""
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    W_values = np.array([result["W"] for result in svd_results])
+
+    for tau in tau_values:
+        svd_ranks = np.array([result["ranks"][tau] for result in svd_results])
+        fast_ranks = np.array([result["ranks"][tau] for result in fast_results])
+
+        ax.scatter(W_values, svd_ranks, marker="o", label=f"SVD, $\\tau={tau:g}$")
+        ax.scatter(W_values, fast_ranks, marker="x", label=f"Fast, $\\tau={tau:g}$")
+
+    ax.set_xlabel("W")
+    ax.set_ylabel("Numerical rank")
+    ax.set_title("Full SVD Rank vs Fast Estimated Rank")
+    ax.set_xscale("log", base=2)
+    ax.grid(True)
+    ax.legend()
+
+    if savefig:
+        out_path = Path("images") / filename
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        print(f"Saved figure to {out_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+def fast_rank_estimation_from_points(source_points: np.ndarray, observer_points: np.ndarray,
+                                     kernel, tau: float, tau_R: float) -> int:
+    """Estimate the numerical rank using sampled source and observer points."""
+    l = 1
+    n = 10
+    N = observer_points.shape[0]
+    prev_rank = None
+
+    while True:
+        n = min(n, N)
+
+        row_idx = np.random.choice(N, size=n, replace=False)
+        col_idx = np.random.choice(N, size=n, replace=False)
+
+        sampled_observer_points = observer_points[row_idx]
+        sampled_source_points = source_points[col_idx]
+
+        A_l_os = constructing_A_os(
+            source_points=sampled_source_points,
+            observer_points=sampled_observer_points,
+            kernel=kernel
+        )
+
+        _, s, _ = np.linalg.svd(A_l_os, full_matrices=False)
+        rank = svd_numerical_rank(s=s, tau=tau)
+
+        if l != 1 and prev_rank is not None:
+            eps_R = (rank - prev_rank) / rank
+            if eps_R < tau_R:
+                return rank
+
+        if n == N:
+            return rank
+
+        prev_rank = rank
+        n = 2 * n
+        l += 1
+
+def run_fast_rank_case_from_points(lam: float, alpha: float, kernel, tau_values, tau_R: float):
+    """Run one fast rank-estimation case without constructing the full A_os."""
+    W = alpha * lam
+    w = W / 8
+
+    bottom_left, top_right, top_left, bottom_right = corner_centers(W=W, w=w)
+    r_cs = bottom_left
+    r_co = top_right
+
+    points = build_grid_points(lam=lam, alpha=alpha)
+    source_points = select_square_points(points=points, center=r_cs, w=w)
+    observer_points = select_square_points(points=points, center=r_co, w=w)
+
+    start = time.perf_counter()
+    ranks = {
+        tau: fast_rank_estimation_from_points(
+            source_points=source_points,
+            observer_points=observer_points,
+            kernel=kernel,
+            tau=tau,
+            tau_R=tau_R
+        )
+        for tau in tau_values
+    }
+    fast_time = time.perf_counter() - start
+
+    return {
+        "alpha": alpha,
+        "W": W,
+        "w": w,
+        "A_shape": (observer_points.shape[0], source_points.shape[0]),
+        "ranks": ranks,
+        "fast_time": fast_time
+    }
+
+def estimate_rank_scaling(results, tau_values, W_min=None):
+    """Estimate rank scaling R(W) ~ C W^p using a log-log fit."""
+    scaling_results = {}
+
+    for tau in tau_values:
+        W_values = np.array([result["W"] for result in results])
+        ranks = np.array([result["ranks"][tau] for result in results])
+
+        mask = ranks > 0
+        if W_min is not None:
+            mask = mask & (W_values >= W_min)
+
+        W_fit = W_values[mask]
+        ranks_fit = ranks[mask]
+
+        p, log_C = np.polyfit(np.log(W_fit), np.log(ranks_fit), 1)
+        C = np.exp(log_C)
+
+        scaling_results[tau] = {
+            "p": p,
+            "C": C
+        }
+
+        print(f"tau={tau:g}: R(W) ~ {C:.4g} * W^{p:.4f}")
+
+    return scaling_results
+
+def save_scaling_results(scaling_results, filename: str = "rank_scaling_results.txt") -> None:
+    """Save asymptotic rank scaling results to a text file."""
+    out_path = Path("results") / filename
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(out_path, "w") as f:
+        f.write("Asymptotic rank scaling results\n")
+        f.write("Model: R(W) ~ C * W^p\n\n")
+
+        for tau, result in scaling_results.items():
+            f.write(
+                f"tau={tau:g}: "
+                f"C={result['C']:.6g}, "
+                f"p={result['p']:.6f}, "
+                f"R(W) ~ {result['C']:.6g} * W^{result['p']:.6f}\n"
+            )
+
+    print(f"Saved scaling results to {out_path}")
+
+if run_part_ii:
+    np.random.seed(0)
+
+    # Comparing between I(c) to II(f)
+    lam = 1.0
+    tau_values = [1e-2, 1e-5, 1e-8]
+    tau_R = 0.05
+    alpha_values = [4, 8, 16, 32, 64]  # Values where full SVD is still feasible
+
+    kernel_c_lam = lambda r_m, r_n: kernel_c(r_m, r_n, lam)
+
+    svd_results = []
+    fast_results = []
+
+    for alpha in alpha_values:
+        svd_result = run_single_case(
+            lam=lam,
+            alpha=alpha,
+            kernel=kernel_c_lam,
+            tau_values=tau_values
+        )
+
+        fast_result = run_fast_rank_case(
+            lam=lam,
+            alpha=alpha,
+            kernel=kernel_c_lam,
+            tau_values=tau_values,
+            tau_R=tau_R
+        )
+
+        svd_results.append(svd_result)
+        fast_results.append(fast_result)
+
+        print(
+            f"alpha={alpha}, W={fast_result['W']}, "
+            f"A_os shape={fast_result['A_shape']}, "
+            f"SVD ranks={svd_result['ranks']}, "
+            f"Fast ranks={fast_result['ranks']}, "
+            f"SVD time={svd_result['svd_time']:.4f} sec, "
+            f"Fast time={fast_result['fast_time']:.4f} sec"
+        )
+
+    plot_rank_comparison_vs_W(
+        svd_results=svd_results,
+        fast_results=fast_results,
+        tau_values=tau_values,
+        savefig=True,
+        filename="Part II/Section f/rank_comparison_vs_W.png",
+        show=False
+    )
+
+    ## Going for higher W
+    large_alpha_values = [128, 256, 512, 1024]
+    large_fast_results = []
+
+    for alpha in large_alpha_values:
+        fast_result = run_fast_rank_case_from_points(
+            lam=lam,
+            alpha=alpha,
+            kernel=kernel_c_lam,
+            tau_values=tau_values,
+            tau_R=tau_R
+        )
+
+        large_fast_results.append(fast_result)
+
+        print(
+            f"alpha={alpha}, W={fast_result['W']}, "
+            f"Equivalent A_os shape={fast_result['A_shape']}, "
+            f"Fast ranks={fast_result['ranks']}, "
+            f"Fast time={fast_result['fast_time']:.4f} sec"
+        )
+
+    all_fast_results = fast_results + large_fast_results
+    plot_ranks_vs_W(
+        results=all_fast_results,
+        tau_values=tau_values,
+        savefig=True,
+        filename="Part II/Section f/fast_ranks_extended_vs_W.png",
+        show=False
+    )
+
+    # Find asymptotic scaling
+    scaling_results = estimate_rank_scaling(
+    results=all_fast_results,
+    tau_values=tau_values,
+    W_min=64
+    )
+
+    save_scaling_results(
+    scaling_results=scaling_results,
+    filename="Part II/Section f/rank_scaling_results.txt"
+    )
