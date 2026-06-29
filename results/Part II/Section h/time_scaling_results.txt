@@ -1,0 +1,6 @@
+Asymptotic time scaling results
+Model: T(W) ~ C * W^p
+Timing value: median over repeated runs
+Each timing measures total time for all tau values
+
+C=2.35804e-05, p=2.065033, T(W) ~ 2.35804e-05 * W^2.065033

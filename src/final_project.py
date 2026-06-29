@@ -5,7 +5,9 @@ import time
 
 # Part I - Preliminaries
 
-run_part_i = False
+run_section_a = False
+run_section_b = False
+run_section_c = False
 
 # Section (a)
 def build_grid_points(lam: float, alpha: float) -> np.ndarray:
@@ -163,7 +165,7 @@ def plot_singular_values(s: np.ndarray, semilog: bool = True, title: str = "Sing
     else:
         plt.close(fig)
 
-if run_part_i:
+if run_section_a:
     lam = 1.0
     alpha = 4
     W = alpha * lam
@@ -353,7 +355,7 @@ def plot_svd_time_vs_W(results, savefig: bool = False, filename: str = "svd_time
     else:
         plt.close()
 
-if run_part_i:
+if run_section_b:
     lam = 1.0
     tau_values = [1e-2, 1e-5, 1e-8]
     alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
@@ -395,7 +397,7 @@ def kernel_c(r_m: np.ndarray, r_n: np.ndarray, lam: float) -> complex:
     k = 2 * np.pi / lam
     return np.exp(-1j * k * dist) / np.sqrt(dist)
 
-if run_part_i:
+if run_section_c:
     lam = 1.0
     tau_values = [1e-2, 1e-5, 1e-8]
     alpha_values = [4, 8, 16, 32, 64] # doubling W by doubling alpha
@@ -429,7 +431,8 @@ if run_part_i:
 
 # Part II - Fast Rank Estimation
 
-run_part_ii = True
+run_section_f = False
+run_section_h = False
 
 # Section (f)
 def fast_rank_estimation(A_os: np.ndarray, tau: float, tau_R: float) -> int:
@@ -646,7 +649,7 @@ def save_scaling_results(scaling_results, filename: str = "rank_scaling_results.
 
     print(f"Saved scaling results to {out_path}")
 
-if run_part_ii:
+if run_section_f:
     np.random.seed(0)
 
     # Comparing between I(c) to II(f)
@@ -739,3 +742,163 @@ if run_part_ii:
     scaling_results=scaling_results,
     filename="Part II/Section f/rank_scaling_results.txt"
     )
+
+# Section (h)
+def run_time_case(lam: float, alpha: float, kernel, tau_values, tau_R: float, num_runs: int = 3):
+    """Measure total fast rank-estimation time for all tau values for one W."""
+    W = alpha * lam
+    w = W / 8
+
+    bottom_left, top_right, top_left, bottom_right = corner_centers(W=W, w=w)
+    r_cs = bottom_left
+    r_co = top_right
+
+    points = build_grid_points(lam=lam, alpha=alpha)
+    source_points = select_square_points(points=points, center=r_cs, w=w)
+    observer_points = select_square_points(points=points, center=r_co, w=w)
+
+    times = []
+    ranks_list = []
+
+    for run in range(num_runs):
+        np.random.seed(run)
+
+        start = time.perf_counter()
+        ranks = {
+            tau: fast_rank_estimation_from_points(
+                source_points=source_points,
+                observer_points=observer_points,
+                kernel=kernel,
+                tau=tau,
+                tau_R=tau_R
+            )
+            for tau in tau_values
+        }
+        fast_time = time.perf_counter() - start
+
+        times.append(fast_time)
+        ranks_list.append(ranks)
+
+    return {
+        "alpha": alpha,
+        "W": W,
+        "A_shape": (observer_points.shape[0], source_points.shape[0]),
+        "median_time": float(np.median(times)),
+        "times": times,
+        "ranks_list": ranks_list
+    }
+
+def plot_fast_time_vs_W(results, savefig: bool = False, filename: str = "fast_time_vs_W.png", show: bool = True) -> None:
+    """Plot median fast rank-estimation time versus W."""
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    W_values = np.array([result["W"] for result in results])
+    times = np.array([result["median_time"] for result in results])
+
+    ax.scatter(W_values, times)
+
+    ax.set_xlabel("W")
+    ax.set_ylabel("Median fast rank-estimation time [sec]")
+    ax.set_title("Fast Rank-Estimation Time vs W")
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.grid(True)
+
+    if savefig:
+        out_path = Path("images") / filename
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        print(f"Saved figure to {out_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+def estimate_time_scaling(results, W_min=None):
+    """Estimate T(W) ~ C W^p."""
+    W_values = np.array([result["W"] for result in results])
+    times = np.array([result["median_time"] for result in results])
+
+    mask = times > 0
+    if W_min is not None:
+        mask = mask & (W_values >= W_min)
+
+    p, log_C = np.polyfit(np.log(W_values[mask]), np.log(times[mask]), 1)
+    C = np.exp(log_C)
+
+    print(f"T(W) ~ {C:.4g} * W^{p:.4f}")
+
+    return {
+        "C": C,
+        "p": p
+    }
+
+def save_time_scaling_results(result, filename: str = "time_scaling_results.txt") -> None:
+    """Save time scaling result to a text file."""
+    out_path = Path("results") / filename
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(out_path, "w") as f:
+        f.write("Asymptotic time scaling results\n")
+        f.write("Model: T(W) ~ C * W^p\n")
+        f.write("Timing value: median over repeated runs\n")
+        f.write("Each timing measures total time for all tau values\n\n")
+        f.write(
+            f"C={result['C']:.6g}, "
+            f"p={result['p']:.6f}, "
+            f"T(W) ~ {result['C']:.6g} * W^{result['p']:.6f}\n"
+        )
+
+    print(f"Saved time scaling results to {out_path}")
+
+if run_section_h:
+    np.random.seed(0)
+
+    lam = 1.0
+    tau_values = [1e-2, 1e-5, 1e-8]
+    tau_R = 0.05
+    num_runs = 3
+
+    alpha_values = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    kernel_c_lam = lambda r_m, r_n: kernel_c(r_m, r_n, lam)
+
+    time_results = []
+
+    for alpha in alpha_values:
+        result = run_time_case(
+            lam=lam,
+            alpha=alpha,
+            kernel=kernel_c_lam,
+            tau_values=tau_values,
+            tau_R=tau_R,
+            num_runs=num_runs
+        )
+
+        time_results.append(result)
+
+        print(
+            f"alpha={alpha}, W={result['W']}, "
+            f"Equivalent A_os shape={result['A_shape']}, "
+            f"median time={result['median_time']:.4f} sec, "
+            f"times={np.round(result['times'], 4)}"
+        )
+
+    plot_fast_time_vs_W(
+        results=time_results,
+        savefig=True,
+        filename="Part II/Section h/fast_time_vs_W.png",
+        show=False
+    )
+
+    time_scaling_result = estimate_time_scaling(
+        results=time_results,
+        W_min=64
+    )
+
+    save_time_scaling_results(
+        result=time_scaling_result,
+        filename="Part II/Section h/time_scaling_results.txt"
+    )
+
+# Part III - Fast LR Estimation
