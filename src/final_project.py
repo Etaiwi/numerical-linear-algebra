@@ -858,7 +858,7 @@ if run_section_h:
     lam = 1.0
     tau_values = [1e-2, 1e-5, 1e-8]
     tau_R = 0.05
-    num_runs = 3
+    num_runs = 5
 
     alpha_values = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
     kernel_c_lam = lambda r_m, r_n: kernel_c(r_m, r_n, lam)
@@ -902,3 +902,330 @@ if run_section_h:
     )
 
 # Part III - Fast LR Estimation
+
+run_section_j = False
+
+def informed_blocked_randomized_lr(A: np.ndarray, tau: float, tau_R: float, gamma: int, N_b: int, seed=None):
+    """Informed Blocked Randomized LR approximation."""
+    if seed is not None:
+        np.random.seed(seed)
+
+    start_time = time.perf_counter()
+
+    # Step 1+2: Initialization and estimate rank
+    A_res = A.copy()
+    N = A.shape[0]
+    A_norm = np.linalg.norm(A, ord="fro")
+
+    # Estimate rank using Part II
+    R_l = fast_rank_estimation(A_os=A, tau=tau, tau_R=tau_R)
+
+    # Block size
+    B0 = int(np.ceil(R_l / N_b))
+    B0 = max(B0, 1)
+
+    U_blocks = []
+    B_blocks = []
+    block_norms = []
+    residual_errors = []
+
+    max_blocks = int(np.ceil(N / B0))
+
+    for _ in range(max_blocks):
+        current_rank = sum(block.shape[1] for block in U_blocks)
+        block_size = min(B0, N - current_rank)
+
+        if block_size <= 0:
+            break
+
+        # Step 3: Generate Complex Gaussian matrix
+        G = (
+            np.random.randn(N, block_size + gamma)
+            + 1j * np.random.randn(N, block_size + gamma)
+        ) / np.sqrt(2)
+
+        # Step 4: Sample residual
+        M = A_res @ G
+
+        # Step 5: SVD of sampled matrix
+        U, _, _ = np.linalg.svd(M, full_matrices=False)
+        U_block = U[:, :block_size]
+
+        # Step 6: Compute coefficient block
+        B = U_block.conj().T @ A_res
+
+        # Step 7: Add the current block
+        U_blocks.append(U_block)
+        B_blocks.append(B)
+
+        # Step 8: Compute block norm and residual error
+        block_norm = np.linalg.norm(B, ord="fro")
+        block_norms.append(block_norm / A_norm)
+
+        # Step 9: Update residual
+        A_res = A_res - U_block @ B
+        residual_error = np.linalg.norm(A_res, ord="fro") / A_norm
+        residual_errors.append(residual_error)
+
+        # Stopping criterion of step 8
+        if block_norm <= tau * A_norm:
+            break
+    
+    U_hat = np.hstack(U_blocks)
+    B_hat = np.vstack(B_blocks)
+
+    return {
+        "U_hat": U_hat,
+        "B_hat": B_hat,
+        "R_l": R_l,
+        "B0": B0,
+        "rank_lr": U_hat.shape[1],
+        "num_blocks": len(U_blocks),
+        "block_norms": block_norms,
+        "residual_errors": residual_errors,
+        "lr_time": time.perf_counter() - start_time,
+        "final_error": residual_errors[-1]
+    }
+
+def best_svd_rank_error(s: np.ndarray, r: int) -> float:
+    """Relative Frobenius error of the best rank-r SVD approximation."""
+    if r >= len(s):
+        return 0.0
+
+    return float(np.linalg.norm(s[r:]) / np.linalg.norm(s))
+
+def build_A_os_for_alpha(alpha: int, lam: float, kernel):
+    """Build A_os using the same geometry as Section (c)."""
+    W = alpha * lam
+    w = W / 8
+
+    bottom_left, top_right, _, _ = corner_centers(W=W, w=w)
+    r_cs = bottom_left
+    r_co = top_right
+
+    points = build_grid_points(lam=lam, alpha=alpha)
+    source_points = select_square_points(points=points, center=r_cs, w=w)
+    observer_points = select_square_points(points=points, center=r_co, w=w)
+
+    A_os = constructing_A_os(
+        source_points=source_points,
+        observer_points=observer_points,
+        kernel=kernel
+    )
+
+    return W, A_os
+
+if run_section_j:
+    np.random.seed(0) # For reproducibility
+
+    # Parameters for the experiments
+    lam = 1.0
+    tau_values = [1e-2, 1e-5, 1e-8]
+    tau_R = 0.05
+    seed = 0
+
+    alpha_values = [4, 8, 16, 32, 64]  # Values where full SVD is still feasible
+    kernel_c_lam = lambda r_m, r_n: kernel_c(r_m, r_n, lam)
+
+    # Parameter calibration
+    calibration_alpha = 64
+    calibration_tau = 1e-5
+    parameter_grid = [(2, 2), (5, 1), (5, 2), (10, 2), (5, 4)] # (gamma, N_b) pairs
+
+    # Selected parameters for final comparison
+    selected_gamma = 5
+    selected_N_b = 2
+
+    calibration_results = []
+    final_results = []
+
+    for alpha in alpha_values:
+        W, A_os = build_A_os_for_alpha(
+            alpha=alpha,
+            lam=lam,
+            kernel=kernel_c_lam
+        )
+
+        print(f"\nW={W:g}, A_os shape={A_os.shape}")
+
+        # Full SVD once per matrix
+        start = time.perf_counter()
+        s = np.linalg.svd(A_os, compute_uv=False)
+        svd_time = time.perf_counter() - start
+
+        svd_ranks = {
+            tau: svd_numerical_rank(s=s, tau=tau)
+            for tau in tau_values
+        }
+
+        print(f"SVD time={svd_time:.4f} sec, SVD ranks={svd_ranks}")
+
+        # Calibration only at W=64 and tau=1e-5
+        if alpha == calibration_alpha:
+            print("\nParameter calibration at W=64, tau=1e-5")
+
+            for gamma, N_b in parameter_grid:
+                lr_result = informed_blocked_randomized_lr(
+                    A=A_os,
+                    tau=calibration_tau,
+                    tau_R=tau_R,
+                    gamma=gamma,
+                    N_b=N_b,
+                    seed=seed
+                )
+
+                r = lr_result["rank_lr"]
+                E_lr = lr_result["final_error"]
+                E_svd = best_svd_rank_error(s=s, r=r)
+                rel_diff = (E_lr - E_svd) / E_svd if E_svd > 0 else np.nan
+
+                row = {
+                    "W": W,
+                    "tau": calibration_tau,
+                    "gamma": gamma,
+                    "N_b": N_b,
+                    "svd_rank": svd_ranks[calibration_tau],
+                    "R_l": lr_result["R_l"],
+                    "B0": lr_result["B0"],
+                    "rank_lr": r,
+                    "num_blocks": lr_result["num_blocks"],
+                    "svd_time": svd_time,
+                    "lr_time": lr_result["lr_time"],
+                    "E_lr": E_lr,
+                    "E_svd": E_svd,
+                    "relative_difference": rel_diff
+                }
+
+                calibration_results.append(row)
+
+                print(
+                    f"gamma={gamma}, N_b={N_b}, "
+                    f"R_l={row['R_l']}, B0={row['B0']}, "
+                    f"rank={r}, blocks={row['num_blocks']}, "
+                    f"LR time={row['lr_time']:.4f}, "
+                    f"E_LR={E_lr:.3e}, E_SVD={E_svd:.3e}, "
+                    f"rel_diff={rel_diff:.3e}"
+                )
+
+        # Final comparison using selected gamma and N_b
+        for tau in tau_values:
+            lr_result = informed_blocked_randomized_lr(
+                A=A_os,
+                tau=tau,
+                tau_R=tau_R,
+                gamma=selected_gamma,
+                N_b=selected_N_b,
+                seed=seed
+            )
+
+            r = lr_result["rank_lr"]
+            E_lr = lr_result["final_error"]
+            E_svd = best_svd_rank_error(s=s, r=r)
+            rel_diff = (E_lr - E_svd) / E_svd if E_svd > 0 else np.nan
+
+            row = {
+                "W": W,
+                "tau": tau,
+                "gamma": selected_gamma,
+                "N_b": selected_N_b,
+                "svd_rank": svd_ranks[tau],
+                "R_l": lr_result["R_l"],
+                "B0": lr_result["B0"],
+                "rank_lr": r,
+                "num_blocks": lr_result["num_blocks"],
+                "svd_time": svd_time,
+                "lr_time": lr_result["lr_time"],
+                "E_lr": E_lr,
+                "E_svd": E_svd,
+                "relative_difference": rel_diff
+            }
+
+            final_results.append(row)
+
+            print(
+                f"tau={tau:g}, "
+                f"SVD rank={row['svd_rank']}, "
+                f"R_l={row['R_l']}, B0={row['B0']}, "
+                f"rank={r}, blocks={row['num_blocks']}, "
+                f"LR time={row['lr_time']:.4f}, "
+                f"E_LR={E_lr:.3e}, E_SVD={E_svd:.3e}, "
+                f"rel_diff={rel_diff:.3e}"
+            )
+
+    # Save results
+    header = [
+        "W", "tau", "gamma", "N_b", "svd_rank", "R_l", "B0",
+        "rank_lr", "num_blocks", "svd_time", "lr_time",
+        "E_lr", "E_svd", "relative_difference"
+    ]
+
+    files_to_save = [
+        ("Part III/Section j/parameter_calibration_W64.csv", calibration_results),
+        ("Part III/Section j/final_comparison.csv", final_results)
+    ]
+
+    for filename, rows in files_to_save:
+        out_path = Path("results") / filename
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(out_path, "w") as f:
+            f.write(",".join(header) + "\n")
+
+            for row in rows:
+                f.write(",".join(str(row[col]) for col in header) + "\n")
+
+        print(f"Saved results to {out_path}")
+
+    # Plot LR time vs SVD time
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    W_unique = sorted(set(row["W"] for row in final_results))
+    svd_times = []
+
+    for W in W_unique:
+        for row in final_results:
+            if row["W"] == W:
+                svd_times.append(row["svd_time"])
+                break
+
+    ax.scatter(W_unique, svd_times, marker="o", label="Full SVD")
+
+    for tau in tau_values:
+        W_plot = [row["W"] for row in final_results if row["tau"] == tau]
+        T_plot = [row["lr_time"] for row in final_results if row["tau"] == tau]
+        ax.scatter(W_plot, T_plot, marker="x", label=f"Fast LR, tau={tau:g}")
+
+    ax.set_xlabel("W")
+    ax.set_ylabel("Computation time [sec]")
+    ax.set_title("Fast LR Time vs Full SVD Time")
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.grid(True)
+    ax.legend()
+
+    out_path = Path("images") / "Part III/Section j/time_comparison.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved figure to {out_path}")
+
+    # Plot relative difference
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    for tau in tau_values:
+        W_plot = [row["W"] for row in final_results if row["tau"] == tau]
+        diff_plot = [row["relative_difference"] for row in final_results if row["tau"] == tau]
+        ax.scatter(W_plot, diff_plot, label=f"tau={tau:g}")
+
+    ax.set_xlabel("W")
+    ax.set_ylabel(r"$(E_{LR}-E_{SVD,r})/E_{SVD,r}$")
+    ax.set_title("Relative Difference Between Fast LR and Best SVD")
+    ax.set_xscale("log", base=2)
+    ax.grid(True)
+    ax.legend()
+
+    out_path = Path("images") / "Part III/Section j/relative_difference.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved figure to {out_path}")

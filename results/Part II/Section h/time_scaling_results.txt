@@ -3,4 +3,4 @@ Model: T(W) ~ C * W^p
 Timing value: median over repeated runs
 Each timing measures total time for all tau values
 
-C=2.35804e-05, p=2.065033, T(W) ~ 2.35804e-05 * W^2.065033
+C=3.82796e-05, p=1.917657, T(W) ~ 3.82796e-05 * W^1.917657
